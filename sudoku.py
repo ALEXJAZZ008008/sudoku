@@ -56,6 +56,111 @@ def get_puzzle():
     return puzzle_list, puzzle_array
 
 
+def get_possibilities(puzzle_list):
+    new_puzzle_list = copy.deepcopy(puzzle_list)
+
+    for i in range(len(new_puzzle_list)):
+        for j in range(len(new_puzzle_list[i])):
+            if len(new_puzzle_list[i][j]) > 1:
+                new_puzzle_list[i][j] = []
+
+    for i in range(len(new_puzzle_list)):
+        for j in range(len(new_puzzle_list[i])):
+            if len(new_puzzle_list[i][j]) < 1:
+                for k in range(1, 10):
+                    is_valid = True
+
+                    for l in range(9):
+                        if not len(new_puzzle_list[l][j]) == 1:
+                            continue
+
+                        if math.isclose(round(k), round(new_puzzle_list[l][j][0])):
+                            is_valid = False
+
+                            break
+
+                    if is_valid:
+                        for l in range(9):
+                            if not len(new_puzzle_list[i][l]) == 1:
+                                continue
+
+                            if math.isclose(round(k), round(new_puzzle_list[i][l][0])):
+                                is_valid = False
+
+                                break
+
+                    if is_valid:
+                        i_square = math.floor(i / 3) * 3
+                        for m in range(i_square, i_square + 3):
+                            j_square = math.floor(j / 3) * 3
+
+                            for n in range(j_square, j_square + 3):
+                                if not len(new_puzzle_list[m][n]) == 1:
+                                    continue
+
+                                if math.isclose(round(k), round(new_puzzle_list[m][n][0])):
+                                    is_valid = False
+
+                                    break
+
+                            if not is_valid:
+                                break
+
+                    if is_valid:
+                        new_puzzle_list[i][j].append(k)
+
+    return new_puzzle_list
+
+
+def get_solution_found(puzzle_list):
+    for i in range(len(puzzle_list)):
+        for j in range(len(puzzle_list[i])):
+            if not len(puzzle_list[i][j]) == 1:
+                return False
+
+    return True
+
+
+def get_number_of_possibilities(puzzle_list):
+    number_of_possibilities = 0
+
+    for i in range(len(puzzle_list)):
+        for j in range(len(puzzle_list[i])):
+            if not len(puzzle_list[i][j]) == 1:
+                number_of_possibilities = number_of_possibilities + len(puzzle_list[i][j])
+
+    return number_of_possibilities
+
+
+def analytical():
+    puzzle_list, puzzle_array = get_puzzle()
+
+    new_puzzle_list = get_possibilities(puzzle_list)
+
+    dead_end_bool = False
+
+    while not get_solution_found(new_puzzle_list):
+        print("Number of possibilities: {0}".format(str(get_number_of_possibilities(new_puzzle_list))))
+
+        new_new_puzzle_list = get_possibilities(new_puzzle_list)
+
+        if new_new_puzzle_list == new_puzzle_list:
+            dead_end_bool = True
+
+            break
+        else:
+            new_puzzle_list = new_new_puzzle_list
+
+    if dead_end_bool:
+        print("Solution not found")
+    else:
+        new_puzzle_array = np.asfarray(make_2d_list_dense(new_puzzle_list)).squeeze()
+
+        print_puzzle(new_puzzle_array)
+
+    return True
+
+
 def get_guess(puzzle_list):
     pars = 0
 
@@ -112,6 +217,22 @@ def horizontal_constraint(guess, puzzle_list, puzzle_array):
     return constraint_value
 
 
+def get_square_puzzle_array_sum(puzzle_array):
+    square_puzzle_array_sum = []
+
+    for i in range(0, 9, 3):
+        for j in range(0, 9, 3):
+            current_sum = 0.0
+
+            for k in range(i, i + 3):
+                for l in range(j, j + 3):
+                    current_sum = current_sum + puzzle_array[k][l]
+
+            square_puzzle_array_sum.append(current_sum)
+
+    return square_puzzle_array_sum
+
+
 def square_constraint(guess, puzzle_list, puzzle_array):
     ground_truth = 9.0 + 8.0 + 7.0 + 6.0 + 5.0 + 4.0 + 3.0 + 2.0 + 1.0
 
@@ -164,15 +285,20 @@ def objective_function_1(guess, puzzle_list, puzzle_array):
                             break
 
                 if is_valid:
-                    for m in range(round(i) % 3, (round(i) % 3) + 3):
-                        for n in range(round(j) % 3, (round(j) % 3) + 3):
-                            if i == m and j == n:
+                    i_square = math.floor(i / 3) * 3
+                    for l in range(i_square, i_square + 3):
+                        j_square = math.floor(j / 3) * 3
+
+                        for m in range(j_square, j_square + 3):
+                            if i == l and j == m:
                                 continue
 
-                            if math.isclose(round(new_puzzle_array[i][j]), round(new_puzzle_array[m][n])):
+                            if math.isclose(round(new_puzzle_array[i][j]), round(new_puzzle_array[l][m])):
                                 objective_value = objective_value + 1.0
 
                                 is_valid = False
+
+                                break
 
                         if not is_valid:
                             break
@@ -180,22 +306,6 @@ def objective_function_1(guess, puzzle_list, puzzle_array):
     print("Objective value: {0}".format(str(objective_value)))
 
     return objective_value
-
-
-def get_square_puzzle_array_sum(puzzle_array):
-    square_puzzle_array_sum = []
-
-    for i in range(0, 9, 3):
-        for j in range(0, 9, 3):
-            current_sum = 0.0
-
-            for k in range(i, i + 3):
-                for l in range(j, j + 3):
-                    current_sum = current_sum + puzzle_array[k][l]
-
-            square_puzzle_array_sum.append(current_sum)
-
-    return square_puzzle_array_sum
 
 
 def objective_function_2(guess, puzzle_list, puzzle_array):
@@ -288,5 +398,11 @@ def optimise(objective_function_index):
 
     print_puzzle(output_puzzle_array)
 
+    return True
 
-optimise(2)
+optimise_bool = False
+
+if optimise_bool:
+    optimise(2)
+else:
+    analytical()
